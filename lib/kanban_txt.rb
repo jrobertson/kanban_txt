@@ -20,6 +20,7 @@ class KanbanTxt
     if File.exists?(fpath) then
       
       @rx = import_to_rx(File.read(fpath))
+      housekeeping(@rx)
 
     else      
       
@@ -62,6 +63,45 @@ class KanbanTxt
     
     File.write File.join(archive_path, filename), rx.to_xml
     
+  end
+  
+  
+  # experimental feature
+  # if a task group or task item is prefixed with a 'x ' then it 
+  # will be moved to the next column
+  #
+  def housekeeping(rx)
+    
+    columns = rx.to_h.to_a[1..-1].map(&:last)
+    
+    for i in (0..columns.length - 1)
+
+      a = columns[i].lines
+
+      marked = a.select {|x| x[/^x\s+/m]}
+
+      marked.each do |task|
+
+        groupid = task[/\w+\d+(?:\.\d+)?(?:\.\d+)?/]
+        group = a.grep /#{groupid}/
+        first = a.index group.first
+        a.slice!(first, group.length)
+
+        if i + 1 < columns.length then
+          columns[i+1] = "\n\n" unless columns[i+1].empty?
+          columns[i+1] = task.sub(/^\s*x\s*/,'') + group[1..-1].join.strip
+        end
+
+      end
+
+      columns[i] = a.join.gsub(/^\n\n/,"\n")
+
+    end
+
+    rx.to_h.keys[1..-1].each.with_index do |column, i|
+      @rx[column] = columns[i]
+    end
+
   end
     
   def import_to_rx(s)
