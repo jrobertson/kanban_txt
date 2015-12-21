@@ -13,13 +13,7 @@ class KanbanTxt
   def initialize(filename='kanban.txt', title: nil, 
                headings: ['Backlog', 'Todo', 'In progress', 'Done'], path: '.')
     
-    if title.nil? then
-      raise 'KanbanTxt: title: must be provided e.g. ' + \
-                                        'KanbanTxt.new title: "project1"'
-    end
-    
     @filename, @path, @title, @headings = filename, path, title, headings
-    @keys = @headings.map{|x| x.downcase.gsub(/[\s\-_]/,'').to_sym}
     
     fpath = File.join(path, filename)
     
@@ -28,6 +22,14 @@ class KanbanTxt
       @rx = import_to_rx(File.read(fpath))
 
     else      
+      
+      if title.nil? then
+        raise 'KanbanTxt: title: must be provided e.g. ' + \
+                                          'KanbanTxt.new title: "project1"'
+      end      
+      
+      @keys = @headings.map{|x| x.downcase.gsub(/[\s\-_]/,'').to_sym}
+      
       @rx = new_rx
     end
     
@@ -51,7 +53,7 @@ class KanbanTxt
   
   def archive()
     
-    # archive the daily planner
+    # archive the kanban at most once a day
     # e.g. kanban/gtk2html/2015/k121215.xml
         
     archive_path = File.join(@path, @title, @d.year.to_s)
@@ -63,17 +65,13 @@ class KanbanTxt
   end
     
   def import_to_rx(s)
-
-    raw_rows = s.split(/.*(?=^[\w, ]+\n\-+)/)
     
-    raw_rows.shift
-    rows = raw_rows.map do |x| 
-      a = x.lines
-      a.shift 2
-      a.join.strip
-    end
-
-    new_rx(@keys.zip(rows))
+    rows = s.split(/.*(?=^[\w, ]+\n\-+)/)    
+    @title = rows.shift[/^(.*)\s+Kanban$/,1]    
+    
+    @headings = rows.map {|x| x.lines.first.chomp}
+    @keys = @headings.map{|x| x.downcase.gsub(/[\s\-_]/,'').to_sym}    
+    new_rx(@keys.zip(rows[0..-1].map { |x| x.lines[2..-1].join.strip }))
     
   end
 
@@ -81,22 +79,21 @@ class KanbanTxt
     
     len = @headings.length
     values = @rx.to_h.values[1..-1]
-    a = @headings.zip(values)
 
-    a2 = a.map do |title, value|
+    a = @headings.zip(values).map do |title, value|
       row = []
-      row << title + "\n" << '-' * title.length + ("\n\n" + value).rstrip + "\n"
+      row << title + "\n" << '-' * title.length + \
+                            ("\n\n" + value).rstrip + "\n"
       row.join
     end
     
-    "%s\n%s\n\n%s\n" % [@rx.title, '=' * rx.title.length, a2.join("\n")]
+    "%s\n%s\n\n%s\n" % [@rx.title, '=' * rx.title.length, a.join("\n")]
 
   end
   
-  def new_rx(h=@keys.zip([''] * @headings.length))
-    
-    title = @title + ' Kanban'
-    RecordX.new({title: title }.merge(Hash[h]))
+  def new_rx(h=@keys.zip([''] * @keys.length))
+
+    RecordX.new({title: @title + ' Kanban' }.merge(Hash[h]))
     
   end
 
