@@ -11,28 +11,32 @@ class KanbanTxt
   attr_reader :to_s
   attr_accessor :title
 
-  def initialize(filename='kanban.txt', title: nil, 
+  def initialize(s='kanban.txt', title: nil, 
                headings: ['Backlog', 'Todo', 'In progress', 'Done'], path: '.')
     
-    @filename, @path, @title, @headings = filename, path, title, headings
+    @path, @title, @headings = path, title, headings
     
-    fpath = File.join(path, filename)
-    
-    if File.exists?(fpath) then
-      
-      @rx = import_to_rx(File.read(fpath))
-      housekeeping(@rx)
-
+    if s.lines.length > 1 then
+      read s
     else      
       
-      if title.nil? then
-        raise 'KanbanTxt: title: must be provided e.g. ' + \
-                                          'KanbanTxt.new title: "project1"'
+      fpath = File.join(path, @filename=s)
+      
+      if File.exists?(fpath) then
+        
+        read File.read(fpath)
+
+      else      
+                
+        if title.nil? then
+          raise 'KanbanTxt: title: must be provided e.g. ' + \
+                                            'KanbanTxt.new title: "project1"'
+        end      
+        
+        @keys = @headings.map{|x| x.downcase.gsub(/[\s\-_]/,'').to_sym}
+        
+        @rx = new_rx
       end      
-      
-      @keys = @headings.map{|x| x.downcase.gsub(/[\s\-_]/,'').to_sym}
-      
-      @rx = new_rx
     end
     
   end
@@ -73,7 +77,7 @@ class KanbanTxt
   #
   def housekeeping(rx)
     
-    columns = rx.to_h.values
+    columns = rx.values
     
     for i in (0..columns.length - 1)
 
@@ -86,6 +90,8 @@ class KanbanTxt
         groupid = task[/\w+\d+(?:\.\d+)?(?:\.\d+)?/]
         group = a.grep /#{groupid}/
         first = a.index group.first
+        
+        # is it the 1st column (recurring) and a recurring task?        
         a.slice!(first, group.length)
 
         if i + 1 < columns.length then
@@ -99,7 +105,7 @@ class KanbanTxt
 
     end
 
-    rx.to_h.keys.each.with_index do |column, i|
+    rx.keys.each.with_index do |column, i|
       @rx[column] = columns[i]
     end
 
@@ -115,11 +121,16 @@ class KanbanTxt
     new_rx(@keys.zip(rows[0..-1].map { |x| x.lines[2..-1].join.strip }))
     
   end
+  
+  def read(s)
+    @rx = import_to_rx(s)
+    housekeeping(@rx)    
+  end
 
   def rx_to_s(rx)
     
     len = @headings.length
-    values = @rx.to_h.values
+    values = rx.values
     
     a = @headings.zip(values).map do |title, value|
 
