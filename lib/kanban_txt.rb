@@ -9,6 +9,7 @@ require 'fileutils'
 class KanbanTxt
   
   attr_reader :to_s
+  attr_accessor :title
 
   def initialize(filename='kanban.txt', title: nil, 
                headings: ['Backlog', 'Todo', 'In progress', 'Done'], path: '.')
@@ -72,7 +73,7 @@ class KanbanTxt
   #
   def housekeeping(rx)
     
-    columns = rx.to_h.to_a[1..-1].map(&:last)
+    columns = rx.to_h.values
     
     for i in (0..columns.length - 1)
 
@@ -88,8 +89,8 @@ class KanbanTxt
         a.slice!(first, group.length)
 
         if i + 1 < columns.length then
-          columns[i+1] = "\n\n" unless columns[i+1].empty?
-          columns[i+1] = task.sub(/^\s*x\s*/,'') + group[1..-1].join.strip
+          columns[i+1] << "\n\n" unless columns[i+1].empty?
+          columns[i+1] << task.sub(/^\s*x\s*/,'') + group[1..-1].join.strip
         end
 
       end
@@ -98,7 +99,7 @@ class KanbanTxt
 
     end
 
-    rx.to_h.keys[1..-1].each.with_index do |column, i|
+    rx.to_h.keys.each.with_index do |column, i|
       @rx[column] = columns[i]
     end
 
@@ -118,22 +119,24 @@ class KanbanTxt
   def rx_to_s(rx)
     
     len = @headings.length
-    values = @rx.to_h.values[1..-1]
-
+    values = @rx.to_h.values
+    
     a = @headings.zip(values).map do |title, value|
+
       row = []
       row << title + "\n" << '-' * title.length + \
-                            ("\n\n" + value).rstrip + "\n"
+                            ("\n\n" + value.to_s).rstrip + "\n"
       row.join
     end
-    
-    "%s\n%s\n\n%s\n" % [@rx.title, '=' * rx.title.length, a.join("\n")]
+
+    h1 = @title + ' Kanban'
+    "%s\n%s\n\n%s\n" % [h1, '=' * h1.length, a.join("\n")]
 
   end
   
   def new_rx(h=@keys.zip([''] * @keys.length))
 
-    RecordX.new({title: @title + ' Kanban' }.merge(Hash[h]))
+    RecordX.new(Hash[h])
     
   end
 

@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'kanban_txt'
-  s.version = '0.1.2'
+  s.version = '0.1.3'
   s.summary = 'Creates a kanban.txt template file'
   s.authors = ['James Robertson']
   s.files = Dir['lib/kanban_txt.rb']
